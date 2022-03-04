@@ -24,10 +24,10 @@ In this part, we will build PTF-SAIv2 infras using sonic-buildimage.
     # Init env
     make init
     # BLDENV=buster: Current image is buster
-    # SAITHRIFT_V2=y: build the saiserver version 2rd
-    # Setup platform environment e.g. broadcom
+    # PLATFORM=<vendor name> Setup platform environment e.g. broadcom
     make BLDENV=buster configure PLATFORM=broadcom
 
+    # SAITHRIFT_V2=y: build the saiserver version 2rd
     # build brcm saiserverv2 docker 
     make BLDENV=buster SAITHRIFT_V2=y -f Makefile.work target/docker-saiserverv2-brcm.gz
 
@@ -55,8 +55,10 @@ For the setup of ptf-sai docker, you can refer to this section [Setup Docker Reg
 
 ## Prepare the saiserverv2 docker on DUT (Device under testing)
 In this section, we will introduce how to setup the saiserverv2 docker in DUT.
-1. Stop all the other services which might impact PTF-SAIv2 testing
-    ```
+1. Stop all the other services besides `database`, which might impact PTF-SAIv2 testing. (Recommanded)
+ 
+   You may activate some services acording to your scenario, but please be sure to stop `swss` and `syncd`.
+    ```shell
     services=("swss" "syncd" "radv" "lldp" "dhcp_relay" "teamd" "bgp" "pmon" "telemetry" "acms" "snmp")
     stop_service(){
         for serv in ${services[*]}; do
@@ -66,13 +68,13 @@ In this section, we will introduce how to setup the saiserverv2 docker in DUT.
     }
     stop_service
     ```
-2. Pull saiserverv2 docker image from registry, as for the detailed setup of docker registry, please refer to [Example: Start SaiServer Docker In DUT](https://github.com/Azure/sonic-mgmt/blob/master/docs/testbed/sai_quality/ExampleStartSaiServerDockerInDUT.md)  
+3. Pull saiserverv2 docker image from registry, as for the detailed setup of docker registry, please refer to [Example: Start SaiServer Docker In DUT](https://github.com/Azure/sonic-mgmt/blob/master/docs/testbed/sai_quality/ExampleStartSaiServerDockerInDUT.md)  
 
-3. Start your saiserver binary from saiserverv2 docker, as for detailed information, please refer to this section [Prepare testing environment on DUT](https://github.com/Azure/sonic-mgmt/blob/master/docs/testbed/sai_quality/SAI.Example.md#prepare-testing-environment-on-dut):
+4. Start your saiserver binary from saiserverv2 docker, as for detailed information, please refer to this section [Prepare testing environment on DUT](https://github.com/Azure/sonic-mgmt/blob/master/docs/testbed/sai_quality/SAI.Example.md#prepare-testing-environment-on-dut):
     
 After successfully starting the saiserver binary, we can get those output from shell:
 ```
-admin@s6000:~$ usr/sbin/saiserver -p /usr/share/sonic/hwsku/sai.profile -f /usr/share/sonic/hwsku/port_config.ini 
+admin@s6000:~$ usr/sbin/saiserver -p /etc/sai.d/sai.profile -f /usr/share/sonic/hwsku/port_config.ini 
 
 profile map file: /usr/share/sonic/hwsku/sai.profile 
 
@@ -99,17 +101,22 @@ In the last section, we will setup our testing environment and run a sanity test
     rm -rf ./SAI
     git clone https://github.com/opencomputeproject/SAI.git
     cd SAI
+    git checkout v1.9
     ```
 
 4. Start PTF-SAIv2 testing within ptf-sai docker
    
    Note: Prepare a port_map_file named [default_interface_to_front_map.ini](https://github.com/opencomputeproject/SAI/blob/master/test/saithrift/src/msn_2700/default_interface_to_front_map.ini) in advance 
-    ```
+    ```shell
     # set the platform name
     export PLATFORM=<vendor name>
 
     # run a sanitytest
     ptf --test-dir ptf saisanity.L2SanityTest --interface '<used port number and dataplane interface>' -t "thrift_server='<DUT ip address>';port_map_file='default_interface_to_front_map.ini'"
+
+    # use a broadcom switch with 32-port as exmaple 
+   export PLATFORM=brcm
+   ptf --test-dir /tmp/SAI/ptf saisanity.L2SanityTest --interface '0-0@eth0' --interface '0-1@eth1' --interface '0-2@eth2' --interface '0-3@eth3' --interface '0-4@eth4' --interface '0-5@eth5' --interface '0-6@eth6' --interface '0-7@eth7' --interface '0-8@eth8' --interface '0-9@eth9' --interface '0-10@eth10' --interface '0-11@eth11' --interface '0-12@eth12' --interface '0-13@eth13' --interface '0-14@eth14' --interface '0-15@eth15' --interface '0-16@eth16' --interface '0-17@eth17' --interface '0-18@eth18' --interface '0-19@eth19' --interface '0-20@eth20' --interface '0-21@eth21' --interface '0-22@eth22' --interface '0-23@eth23' --interface '0-24@eth24' --interface '0-25@eth25' --interface '0-26@eth26' --interface '0-27@eth27' --interface '0-28@eth28' --interface '0-29@eth29' --interface '0-30@eth30' --interface '0-31@eth31' "--test-params=thrift_server='<DUT ip address>'"
     ```
 Finally, we can see the result as shown below:
 
